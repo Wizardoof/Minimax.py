@@ -1,0 +1,265 @@
+import random
+import copy
+import time
+
+class Laberinto:
+    def __init__(self, filas=5, columnas=5):
+        #__init__ inicializador Este método se llama AUTOMÁTICAMENTE al crear un objeto
+        # Tablero básico 5x5
+        self.filas, self.columnas = filas, columnas #self es la identidad de cada fila y columna
+        self.tablero = [['.' for _ in range(columnas)] for _ in range(filas)]
+        self.gato = (0, 0)           # Gato arriba-izquierda
+        self.raton = (filas-1, columnas-1)  # Ratón abajo-derecha
+        self.turno = 0
+        self.max_turnos = 10         # pocos turnos juegos más rápidos
+        self.actualizar_tablero()
+    
+    def actualizar_tablero(self):
+        #Dibuja el tablero con las posiciones actuales
+        # Limpiar tablero
+        self.tablero = [['.' for _ in range(self.columnas)] for _ in range(self.filas)]
+        # Colocar jugadores
+        self.tablero[self.gato[0]][self.gato[1]] = '🐱'
+        self.tablero[self.raton[0]][self.raton[1]] = '🐭'
+    
+    def movimiento_valido(self, pos, jugador):
+        #Verifica si un movimiento es permitido
+        #pos=posicion, col=columna
+        fila, col = pos
+        # 1. No salir del tablero
+        if not (0 <= fila < self.filas and 0 <= col < self.columnas):
+            return False
+        # 2. Gato puede atrapar ratón
+        if jugador == '🐱' and pos == self.raton:
+            return True
+        # 3. Ratón no puede moverse al gato
+        if jugador == '🐭' and pos == self.gato:
+            return False
+        return True
+    
+    def movimientos_posibles(self, jugador):
+        #Lista de movimientos válidos (4 direcciones)
+        pos_actual = self.gato if jugador == '🐱' else self.raton
+        movimientos = []
+        # Solo 4 direcciones para simplificar
+        direcciones = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # Arriba, abajo, izquierda, derecha
+        
+        for d in direcciones:
+            nueva_pos = (pos_actual[0] + d[0], pos_actual[1] + d[1])
+            if self.movimiento_valido(nueva_pos, jugador):
+                movimientos.append(nueva_pos)
+                
+        return movimientos
+    
+    def mover(self, jugador, nueva_pos):
+        """Mueve al jugador y verifica si alguien gana"""
+        if jugador == '🐱':
+            self.gato = nueva_pos
+            if self.gato == self.raton:  # Gato atrapa ratón
+                return 'GATO_GANA'
+        else:
+            self.raton = nueva_pos
+            self.turno += 1
+            if self.turno >= self.max_turnos:  # Ratón sobrevive
+                return 'RATON_ESCAPA'
+        
+        self.actualizar_tablero()
+        return 'CONTINUA'
+    
+    def evaluar_estado(self):
+        """Función simple: distancia entre gato y ratón"""
+        return abs(self.gato[0] - self.raton[0]) + abs(self.gato[1] - self.raton[1])
+
+class Juego:
+    def __init__(self, laberinto):
+        self.laberinto = laberinto
+        self.profundidad = 2  # Solo 2 niveles de profundidad para ser rápido
+    
+    def minimax(self, estado, profundidad, es_maximizador):
+        """Algoritmo Minimax"""
+        # Casos base: ¿terminó el juego?
+        if estado.gato == estado.raton:
+            return -100  # Malo para ratón
+        if estado.turno >= estado.max_turnos:
+            return 100   # Bueno para ratón
+        
+        if profundidad == 0:
+            return estado.evaluar_estado()
+        
+        if es_maximizador:  # Ratón (busca max)
+            mejor_valor = -float('inf')
+            for movimiento in estado.movimientos_posibles('🐭'):
+                nuevo_estado = copy.deepcopy(estado)
+                nuevo_estado.mover('🐭', movimiento)
+                valor = self.minimax(nuevo_estado, profundidad-1, False)
+                mejor_valor = max(mejor_valor, valor)
+            return mejor_valor
+            
+        else:  # Gato (busca mini)
+            mejor_valor = float('inf')
+            for movimiento in estado.movimientos_posibles('🐱'):
+                nuevo_estado = copy.deepcopy(estado)
+                nuevo_estado.mover('🐱', movimiento)
+                valor = self.minimax(nuevo_estado, profundidad-1, True)
+                mejor_valor = min(mejor_valor, valor)
+            return mejor_valor
+    
+    def mejor_movimiento(self, jugador):
+        """Encuentra el mejor movimiento para el jugador"""
+        movimientos = self.laberinto.movimientos_posibles(jugador)
+        if not movimientos:
+            return self.laberinto.gato if jugador == '🐱' else self.laberinto.raton
+        
+        mejor_mov = None
+        mejor_valor = -float('inf') if jugador == '🐭' else float('inf')
+        
+        for movimiento in movimientos:
+            nuevo_estado = copy.deepcopy(self.laberinto)
+            nuevo_estado.mover(jugador, movimiento)
+            
+            # Ratón maximiza, Gato minimiza
+            if jugador == '🐭':
+                valor = self.minimax(nuevo_estado, self.profundidad-1, False)
+                if valor > mejor_valor:
+                    mejor_valor = valor
+                    mejor_mov = movimiento
+            else:
+                valor = self.minimax(nuevo_estado, self.profundidad-1, True)
+                if valor < mejor_valor:
+                    mejor_valor = valor
+                    mejor_mov = movimiento
+        
+        return mejor_mov if mejor_mov is not None else movimientos[0]
+    
+    def jugar_turno_ia_vs_ia(self):
+        #Un turno completo: ratón y luego gato (ambos IA)
+        # Ratón se mueve
+        mov_raton = self.mejor_movimiento('🐭')
+        resultado = self.laberinto.mover('🐭', mov_raton)
+        if resultado != 'CONTINUA':
+            return resultado
+        
+        # Gato se mueve
+        mov_gato = self.mejor_movimiento('🐱')
+        return self.laberinto.mover('🐱', mov_gato)
+
+def mostrar_tablero_simple(laberinto):
+    #Muestra el tablero de forma simple
+    print(f"\nTurno: {laberinto.turno}/{laberinto.max_turnos}")
+    for fila in laberinto.tablero:
+        print(' '.join(fila))
+    print(f"Distancia: {laberinto.evaluar_estado()}")
+
+def obtener_movimiento_jugador(laberinto, jugador):
+    #Pide movimiento al jugador humano
+    print(f"\nTurno del {'Gato' if jugador == '🐱' else 'Ratón'}")
+    print("W=Arriba, A=Izquierda, S=Abajo, D=Derecha")
+    
+    while True:
+        tecla = input("Movimiento (W/A/S/D): ").upper()
+        movimientos = {'W': (-1, 0), 'A': (0, -1), 'S': (1, 0), 'D': (0, 1)}
+        
+        if tecla in movimientos:
+            pos_actual = laberinto.gato if jugador == '🐱' else laberinto.raton
+            movimiento = movimientos[tecla]
+            nueva_pos = (pos_actual[0] + movimiento[0], pos_actual[1] + movimiento[1])
+            
+            if laberinto.movimiento_valido(nueva_pos, jugador):
+                return nueva_pos
+            else:
+                print("Movimiento inválido. Intente otra dirección.")
+        else:
+            print("Tecla no válida. Use W, A, S o D.")
+
+def simulacion_automatica():
+    #Modo: IA vs IA (simulación automática)
+    lab = Laberinto(5, 5)
+    juego = Juego(lab)
+    
+    print("=== IA vs IA ===")
+    while True:
+        mostrar_tablero_simple(lab)
+        time.sleep(1)
+        
+        resultado = juego.jugar_turno_ia_vs_ia()
+        if resultado != 'CONTINUA':
+            mostrar_tablero_simple(lab)
+            print("¡Gato gana!" if resultado == 'GATO_GANA' else "¡Ratón escapa!")
+            break
+
+def jugar_como_raton():
+    #Modo: Jugador como ratón vs IA gato
+    lab = Laberinto(5, 5)
+    juego = Juego(lab)
+    
+    print("=== Tú como Ratón vs IA Gato ===")
+    while True:
+        mostrar_tablero_simple(lab)
+        
+        # Jugador (ratón)
+        mov_raton = obtener_movimiento_jugador(lab, '🐭')
+        resultado = lab.mover('🐭', mov_raton)
+        if resultado != 'CONTINUA':
+            mostrar_tablero_simple(lab)
+            print("¡Ganaste!" if resultado == 'RATON_ESCAPA' else "¡Perdiste!")
+            break
+        
+        # IA (gato)
+        mov_gato = juego.mejor_movimiento('🐱')
+        resultado = lab.mover('🐱', mov_gato)
+        if resultado != 'CONTINUA':
+            mostrar_tablero_simple(lab)
+            print("¡Perdiste! El gato te atrapó")
+            break
+
+def jugar_como_gato():
+    #Modo: Jugador como gato vs IA ratón
+    lab = Laberinto(5, 5)
+    juego = Juego(lab)
+    
+    print("=== Tú como Gato vs IA Ratón ===")
+    while True:
+        mostrar_tablero_simple(lab)
+        
+        # IA (ratón)
+        mov_raton = juego.mejor_movimiento('🐭')
+        resultado = lab.mover('🐭', mov_raton)
+        if resultado != 'CONTINUA':
+            mostrar_tablero_simple(lab)
+            print("¡Perdiste! El ratón escapó")
+            break
+        
+        # Jugador (gato)
+        mov_gato = obtener_movimiento_jugador(lab, '🐱')
+        resultado = lab.mover('🐱', mov_gato)
+        if resultado != 'CONTINUA':
+            mostrar_tablero_simple(lab)
+            print("¡Ganaste! Atrapaste al ratón")
+            break
+
+def menu_principal():
+    #Menú para elegir modo de juego
+    while True:
+        print("\n=== LABERINTO GATO Y RATÓN ===")
+        print("1. Ver IA vs IA")
+        print("2. Jugar como Ratón")
+        print("3. Jugar como Gato")
+        print("4. Salir")
+        
+        opcion = input("Elige (1-4): ")
+        
+        if opcion == '1':
+            simulacion_automatica()
+        elif opcion == '2':
+            jugar_como_raton()
+        elif opcion == '3':
+            jugar_como_gato()
+        elif opcion == '4':
+            print("¡Gracias por jugar!")
+            break
+        else:
+            print("Opción no válida vuelva a intentar")
+
+# Ejecutar el juego
+if __name__ == "__main__":
+    menu_principal()
