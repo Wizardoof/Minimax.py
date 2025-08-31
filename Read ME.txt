@@ -1,0 +1,3 @@
+Cree un tablero con dos clases una clase Laberinto donde puse todas las funciones del laberinto y otra clase Juego donde puse todas las reglas y lo necesario para jugar el juego 
+tuvo muchas versiones y varios problemas pero todo se pudo resolver lo principal era que mi gato no perseguia a mi raton cuando elegia ser el raton yo entonces le quite el minimax al gato cuando pasa eso para que solamente siga al raton 
+ese fue uno de los ultimos cambios y tambien agregue typing para diferenciar bien que es que dentro del codigo ya que tenia problemas con que no me reconocian algunas partes del codigo y entonces investigue y llegue a esa solucion 
