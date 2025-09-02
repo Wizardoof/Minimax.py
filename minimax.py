@@ -19,7 +19,7 @@ def crear_tablero():
     for i in range(filas):
         fila = []
         for j in range(columnas):
-            fila.append("⬜")
+            fila.append(".")
         tablero.append(fila)
     
     # Colocar elementos en sus posiciones iniciales
@@ -67,13 +67,13 @@ def mover_jugador(jugador, nueva_fila, nueva_col):
     
     if jugador == 'G':
         # Borrar gato de posición actual y moverlo
-        tablero[gato_fila][gato_col] = '⬜'
+        tablero[gato_fila][gato_col] = '.'
         gato_fila = nueva_fila
         gato_col = nueva_col
         tablero[gato_fila][gato_col] = '🐱'
     else:  # jugador == 'R'
         # Borrar ratón de posición actual y moverlo
-        tablero[raton_fila][raton_col] = '⬜'
+        tablero[raton_fila][raton_col] = '.'
         raton_fila = nueva_fila
         raton_col = nueva_col
         tablero[raton_fila][raton_col] = '🐭'
